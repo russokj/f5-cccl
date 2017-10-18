@@ -210,15 +210,25 @@ class ServiceConfigDeployer(object):
 
         existing_iapps = self._bigip.get_app_svcs()
         existing_virtuals = self._bigip.get_virtuals()
+        existing_policies = self._bigip.get_l7policies()
+        existing_irules = self._bigip.get_irules()
+        existing_internal_data_groups = self._bigip.get_internal_data_groups()
         existing_pools = self._bigip.get_pools()
 
         delete_iapps = self._get_resource_tasks(existing_iapps, {})[-1]
         delete_virtuals = self._get_resource_tasks(existing_virtuals, {})[-1]
+        delete_policies = self._get_resource_tasks(existing_policies, {})[-1]
+        delete_irules = self._get_resource_tasks(existing_irules, {})[-1]
+        delete_internal_data_groups = self._get_resource_tasks(
+            existing_internal_data_groups, {})[-1]
         delete_pools = self._get_resource_tasks(existing_pools, {})[-1]
+        delete_monitors = self._get_monitor_tasks({})[-1]
+
         delete_nodes = self._get_resource_tasks(existing_nodes, {})[-1]
 
-        delete_tasks = (delete_iapps + delete_virtuals
-                        + delete_pools + delete_nodes)
+        delete_tasks = delete_iapps + delete_virtuals + delete_policies + \
+            delete_irules + delete_internal_data_groups + delete_pools + \
+            delete_monitors + delete_nodes
         taskq_len = len(delete_tasks)
 
         finished = False
