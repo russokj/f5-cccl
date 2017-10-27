@@ -301,7 +301,8 @@ class BigIPProxy(object):
 
         #  Refresh the virtual address cache.
         self._virtual_addresses = {
-            v.name: self._create_resource(IcrVirtualAddress, v)
+            v.name: self._create_resource(IcrVirtualAddress, v,
+                                          default_route_domain)
             for v in virtual_addresses if self._manageable_resource(v)
         }
 
