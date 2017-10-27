@@ -99,7 +99,8 @@ class ServiceConfigReader(object):
         # Get the list of explicitly defined virtual addresses.
         virtual_addresses = service_config.get('virtualAddresses', list())
         config_dict['virtual_addresses'] = {
-            va['name']: self._create_config_item(ApiVirtualAddress, va)
+            va['name']: self._create_config_item(ApiVirtualAddress, va,
+                                                 default_route_domain)
             for va in virtual_addresses
         }
 
