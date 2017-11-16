@@ -22,6 +22,9 @@ try:
 except ImportError:
     from urllib.parse import quote
 
+from f5_cccl.utils.route_domain import normalize_address_with_route_domain
+
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -111,7 +114,9 @@ def _fdb_records_update(mgmt_root, vxlan_name, endpoint_list):
     data = {'records': []}
     records = data['records']
     for endpoint in endpoint_list:
-        record = {'name': _ipv4_to_mac(endpoint), 'endpoint': endpoint}
+        ip_addr = normalize_address_with_route_domain(endpoint, 0)[1]
+        endpoint += '%2' # TODO(kenr): Pass in as part vxlan-node-ips
+        record = {'name': _ipv4_to_mac(ip_addr), 'endpoint': endpoint}
         records.append(record)
     LOGGER.debug("Updating records for vxlan tunnel %s: %s",
                  vxlan_name, data['records'])
