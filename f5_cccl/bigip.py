@@ -218,6 +218,7 @@ class BigIPProxy(object):
 
         #  Determine the current route domain default for the partition
         default_route_domain = self.get_default_route_domain()
+        print("DEFAULT ROUTE DOMAIN IS SET TO: {}".format(default_route_domain))
 
         #  Retrieve the lists of health monitors
         LOGGER.debug("Retrieving http_monitors from BIG-IP /%s...",
