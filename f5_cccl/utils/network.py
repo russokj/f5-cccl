@@ -22,6 +22,8 @@ try:
 except ImportError:
     from urllib.parse import quote
 
+from f5_cccl.utils.route_domain import normalize_address_with_route_domain
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -41,17 +43,27 @@ class IPV4FormatError(Exception):
         Exception.__init__(self, msg)
 
 
-def apply_network_fdb_config(mgmt_root, fdb_config):
+# FIXME(kenr): Called directly from bigipdriver
+def apply_network_fdb_config(mgr, fdb_config):
     """Apply the network fdb configuration to the BIG-IP.
 
     Args:
         config: BIG-IP network fdb config dict
     """
+    print("Applying network FDB")
+    mgmt_root = mgr.mgmt_root()
     req_vxlan_name = fdb_config['vxlan-name']
-    req_fdb_record_endpoint_list = fdb_config['vxlan-node-ips']
+
+    rd = mgr._cccl._bigip_proxy.get_default_route_domain()
+    req_fdb_record_endpoint_list = []
+    for endpoint in fdb_config['vxlan-node-ips']:
+        req_fdb_record_endpoint_list.append(normalize_address_with_route_domain(endpoint, rd)[0])
+    print("FDB Records as reported by controller: {}".format(req_fdb_record_endpoint_list))
+
     try:
         f5_fdb_record_endpoint_list = _get_fdb_records(mgmt_root,
-                                                       req_vxlan_name)
+                                                       req_vxlan_name,
+                                                       rd)
 
         _log_sequence('req_fdb_record_list', req_fdb_record_endpoint_list)
         _log_sequence('f5_fdb_record_list', f5_fdb_record_endpoint_list)
@@ -60,9 +72,11 @@ def apply_network_fdb_config(mgmt_root, fdb_config):
         # If so, update with new list.
         if _list_diff_exclusive(f5_fdb_record_endpoint_list,
                                 req_fdb_record_endpoint_list):
+            print("Mismatch in FDB, must update")
             _fdb_records_update(mgmt_root,
                                 req_vxlan_name,
-                                req_fdb_record_endpoint_list)
+                                req_fdb_record_endpoint_list,
+                                rd)
         return 0
     except (PartitionNameError, IPV4FormatError) as e:
         LOGGER.error(e)
@@ -85,7 +99,7 @@ def _get_vxlan_tunnel(mgmt_root, vxlan_name):
     return vxlan_tunnel
 
 
-def _get_fdb_records(mgmt_root, vxlan_name):
+def _get_fdb_records(mgmt_root, vxlan_name, rd):
     """Get a list of FDB records (just the endpoint list) for the vxlan.
 
     Args:
@@ -95,12 +109,14 @@ def _get_fdb_records(mgmt_root, vxlan_name):
     vxlan_tunnel = _get_vxlan_tunnel(mgmt_root, vxlan_name)
     if hasattr(vxlan_tunnel, 'records'):
         for record in vxlan_tunnel.records:
-            endpoint_list.append(record['endpoint'])
+            print("BigIP EP Before normalization: {}".format(record['endpoint']))
+            endpoint_list.append(normalize_address_with_route_domain(record['endpoint'], rd)[0])
+            print("BigIP EP After normalization: {}".format(normalize_address_with_route_domain(record['endpoint'], rd)[0]))
 
     return endpoint_list
 
 
-def _fdb_records_update(mgmt_root, vxlan_name, endpoint_list):
+def _fdb_records_update(mgmt_root, vxlan_name, endpoint_list, rd):
     """Update the fdb records for a vxlan tunnel.
 
     Args:
@@ -111,7 +127,9 @@ def _fdb_records_update(mgmt_root, vxlan_name, endpoint_list):
     data = {'records': []}
     records = data['records']
     for endpoint in endpoint_list:
-        record = {'name': _ipv4_to_mac(endpoint), 'endpoint': endpoint}
+        rd_addr, ip_addr, _ = normalize_address_with_route_domain(endpoint, rd)
+        # FIXME(kenr): Does mac have to be unique in that we make use of rd?
+        record = {'name': _ipv4_to_mac(ip_addr), 'endpoint': rd_addr}
         records.append(record)
     LOGGER.debug("Updating records for vxlan tunnel %s: %s",
                  vxlan_name, data['records'])
