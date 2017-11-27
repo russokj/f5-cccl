@@ -43,7 +43,7 @@ class VirtualAddress(Resource):
             self._data[key] = properties.get(key, value)
         if self._data['address'] is not None:
             self._data['address'] = normalize_address_with_route_domain(
-                self._data['address'], default_route_domain)
+                self._data['address'], default_route_domain)[0]
 
     def __eq__(self, other):
         if not isinstance(other, VirtualAddress):
