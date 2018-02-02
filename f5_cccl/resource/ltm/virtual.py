@@ -68,7 +68,7 @@ class VirtualServer(Resource):
 
     def __init__(self, name, partition, default_route_domain, **properties):
         """Create a Virtual server instance."""
-        super(VirtualServer, self).__init__(name, partition)
+        super(VirtualServer, self).__init__(name, partition, **properties)
 
         for key, default in self.properties.items():
             if key in ["profiles", "policies"]:
