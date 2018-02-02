@@ -47,18 +47,23 @@ class ServiceConfigDeployer(object):
 
     def _get_resource_tasks(self, existing, desired):
         """Get the list of resources to create, delete, update."""
+        managed_existing = {
+            name: resource for name, resource in existing.items()
+            if resource.white_listed is not True
+        }
+
         create_list = [
             desired[resource] for resource in
-            set(desired) - set(existing)
+            set(desired) - set(managed_existing)
         ]
-        update_list = set(desired) & set(existing)
+        update_list = set(desired) & set(managed_existing)
         update_list = [
             desired[resource] for resource in update_list
-            if desired[resource] != existing[resource]
+            if desired[resource] != managed_existing[resource]
         ]
         delete_list = [
-            existing[resource] for resource in
-            set(existing) - set(desired)
+            managed_existing[resource] for resource in
+            set(managed_existing) - set(desired)
         ]
         return (create_list, update_list, delete_list)
 

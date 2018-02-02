@@ -53,12 +53,14 @@ class Resource(object):
 
     """
 
+    common_properties = dict(metadata=None)
+
     @classmethod
     def classname(cls):
         """Return the class name of the resource."""
         return cls.__name__
 
-    def __init__(self, name, partition):
+    def __init__(self, name, partition, **properties):
         u"""Initialize a BIG-IP resource object from a CCCL schema object.
 
         Args:
@@ -73,6 +75,18 @@ class Resource(object):
         self._data = dict()
         self._data['name'] = name
         self._data['partition'] = partition
+        self._white_listed = False
+
+        if properties:
+            for key, default in self.common_properties.items():
+                value = properties.get(key, default)
+                if value is not None:
+                    if key == 'metadata':
+                        # set resource flags
+                        self._process_metadata_flags(name, value)
+                    else:
+                        # Add common properties for all resources
+                        self._data[key] = value
 
     def __eq__(self, resource):
         u"""Compare two resources for equality.
@@ -240,6 +254,11 @@ class Resource(object):
         u"""Get the internal data model for this resource."""
         return self._data
 
+    @property
+    def white_listed(self):
+        u"""Flag to indicate if resource should be ignored"""
+        return self._white_listed
+
     def full_path(self):
         u"""Concatenate the partition and name to form fullPath."""
         return "/{}/{}".format(self.partition, self.name)
@@ -269,3 +288,12 @@ class Resource(object):
             raise cccl_exc.F5CcclResourceRequestError(str(error))
         else:
             raise cccl_exc.F5CcclError(str(error))
+
+    def _process_metadata_flags(self, name, metadata_list):
+        # look for supported flags
+        for metadata in metadata_list:
+            if metadata['name'] == 'cccl-whitelist':
+                self._white_listed = metadata['value'] in [
+                    'true', 'True', 'TRUE', 1]
+                LOGGER.debug('Resource %s whitelist: %s',
+                             name, self._white_listed)
