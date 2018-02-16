@@ -55,7 +55,7 @@ class F5CloudServiceManager(object):
         resource name (default: None)
         :param schema_path: User defined schema (default: from package)
         """
-        LOGGER.debug("F5CloudServiceManager initialize")
+        LOGGER.info("KJR: F5CloudServiceManager initialize - pinned f5-icontrol-rest")
 
         # Set user-agent for ICR session
         if user_agent is not None:
