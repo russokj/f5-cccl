@@ -25,8 +25,21 @@ from icontrol.exceptions import iControlUnexpectedHTTPError
 from requests.utils import quote as urlquote
 
 import f5_cccl.exceptions as cccl_exc
+from f5_cccl.utils.resource_merge import merge
 
 LOGGER = logging.getLogger(__name__)
+
+
+def merge_dict(dst, src):
+    u"""Merge src dictionary into dst, replacing existing entries"""
+
+    if not isinstance(dst, dict) or not isinstance(src, dict):
+        return src
+
+    for key in src.keys():
+        dst[key] = merge_dict(dst[key], src[key]) if key in dst else src[key]
+
+    return dst
 
 
 class Resource(object):
@@ -111,6 +124,11 @@ class Resource(object):
 
     def __str__(self):
         return str(self._data)
+
+    def merge(self, resource):
+        u"""Merge in properties from external resource (overwrite existing)"""
+
+        self._data = merge(self.data, resource.data)
 
     def create(self, bigip):
         u"""Create resource on a BIG-IP system.
