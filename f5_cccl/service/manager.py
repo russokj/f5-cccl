@@ -18,6 +18,7 @@
 
 from __future__ import print_function
 
+import copy
 import logging
 from time import time
 
@@ -47,6 +48,10 @@ class ServiceConfigDeployer(object):
 
     def _get_resource_tasks(self, existing, desired):
         """Get the list of resources to create, delete, update."""
+        unmanaged = {
+            name: resource for name, resource in existing.items()
+            if resource.whitelist is True
+        }
         managed = {
             name: resource for name, resource in existing.items()
             if resource.whitelist is False
@@ -54,6 +59,7 @@ class ServiceConfigDeployer(object):
 
         desired_set = set(desired)
         existing_set = set(existing)
+        unmanaged_set = set(unmanaged)
         managed_set = set(managed)
 
         # Create any managed resource that doesn't currently exist
@@ -68,12 +74,30 @@ class ServiceConfigDeployer(object):
             if desired[resource] != managed[resource]
         ]
 
+        # Merge unmanaged resources with desired if needed
+        for resource in desired_set & unmanaged_set:
+            update_resource = self._merge_resource(
+                resource, desired, unmanaged)
+            if update_resource:
+                update_list.append(update_resource)
+
         # Delete any managed resource that isn't still desired
         delete_list = [
             managed[resource] for resource in
             managed_set - desired_set
         ]
         return (create_list, update_list, delete_list)
+
+    def _merge_resource(self, resource, desired, unmanaged):
+        """Merge desired settings with existing settings"""
+
+        # if whitelist object, merge in desired with the existing properties
+        merged = copy.deepcopy(unmanaged[resource])
+        merged.merge(desired[resource])
+
+        if merged != unmanaged[resource]:
+            return merged
+        return None
 
     def _create_resources(self, create_list):
         """Iterate over the resources and call create method."""
