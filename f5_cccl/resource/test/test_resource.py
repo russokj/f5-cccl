@@ -252,7 +252,7 @@ def test_ignore_unknown_properties():
     res = Resource(**data)
 
     assert len(res.data) == 2
-    assert res.white_listed is False
+    assert res.whitelist is False
 
     with pytest.raises(KeyError):
         _ = res.data['prop1']
@@ -268,7 +268,7 @@ def test_metedata_not_set():
 
     res = Resource(**data)
 
-    assert res.white_listed is False
+    assert res.whitelist is False
 
 
 def test_unsupported_metedata_property():
@@ -279,10 +279,10 @@ def test_unsupported_metedata_property():
     res = Resource(**data)
 
     assert len(res.data) == 2
-    assert res.white_listed is False
+    assert res.whitelist is False
 
 
-def test_white_list_true_metedata_property():
+def test_whitelist_true_metedata_property():
     u"""Test Resource data update."""
     data = resource_data()
     data['metadata'] = [{'name': 'cccl-whitelist', 'value': 'true'}]
@@ -290,10 +290,10 @@ def test_white_list_true_metedata_property():
     res = Resource(**data)
 
     assert len(res.data) == 2
-    assert res.white_listed is True
+    assert res.whitelist is True
 
 
-def test_white_list_false_metedata_property():
+def test_whitelist_false_metedata_property():
     u"""Test Resource data update."""
     data = resource_data()
     data['metadata'] = [{'name': 'cccl-whitelist', 'value': 'false'}]
@@ -301,7 +301,7 @@ def test_white_list_false_metedata_property():
     res = Resource(**data)
 
     assert len(res.data) == 2
-    assert res.white_listed is False
+    assert res.whitelist is False
 
 
 def test_create_subresource(bigip):
