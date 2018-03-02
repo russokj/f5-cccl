@@ -37,7 +37,7 @@ class IRule(Resource):
 
     def __init__(self, name, partition, **data):
         """Create the iRule"""
-        super(IRule, self).__init__(name, partition)
+        super(IRule, self).__init__(name, partition, **data)
 
         self._data['metadata'] = data.get(
             'metadata',
