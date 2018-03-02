@@ -75,7 +75,8 @@ class Resource(object):
         self._data = dict()
         self._data['name'] = name
         self._data['partition'] = partition
-        self._white_listed = False
+        # user defined objects that must not be removed, even if not referenced
+        self._whitelist = False
 
         if properties:
             for key, default in self.common_properties.items():
@@ -255,9 +256,9 @@ class Resource(object):
         return self._data
 
     @property
-    def white_listed(self):
-        u"""Flag to indicate if resource should be ignored"""
-        return self._white_listed
+    def whitelist(self):
+        u"""Flag to indicate if user-created resource should be ignored"""
+        return self._whitelist
 
     def full_path(self):
         u"""Concatenate the partition and name to form fullPath."""
@@ -293,7 +294,7 @@ class Resource(object):
         # look for supported flags
         for metadata in metadata_list:
             if metadata['name'] == 'cccl-whitelist':
-                self._white_listed = metadata['value'] in [
-                    'true', 'True', 'TRUE', 1]
+                self._whitelist = metadata['value'] in [
+                    'true', 'True', 'TRUE', '1', 1]
                 LOGGER.debug('Resource %s whitelist: %s',
-                             name, self._white_listed)
+                             name, self._whitelist)
