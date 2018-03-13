@@ -266,7 +266,7 @@ def test_update_subresource(bigip):
     bigip.tm.ltm.subresources.subresource.load.return_value = (
         bigip.tm.ltm.subresources.subresource.obj
     )
-    obj = subres.update(bigip)
+    obj = subres.update(bigip, modify=False)
 
     assert not obj
     bigip.tm.ltm.subresources.subresource.load.assert_called()
@@ -394,7 +394,7 @@ def test_update_subresource_sdk_exception(bigip):
     )
 
     with pytest.raises(cccl_exc.F5CcclResourceUpdateError):
-        subres.update(bigip)
+        subres.update(bigip, modify=False)
 
 
 def test_update_subresource_icontrol_404_exception(bigip, response):
@@ -431,7 +431,7 @@ def test_update_subresource_icontrol_4XX_exception(bigip, response):
     )
 
     with pytest.raises(cccl_exc.F5CcclResourceRequestError):
-        obj = subres.update(bigip)
+        obj = subres.update(bigip, modify=False)
 
         assert not obj
 

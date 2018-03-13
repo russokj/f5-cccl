@@ -174,7 +174,7 @@ class Resource(object):
             F5CcclResourceNotFoundError: resouce cannot be updated because
             it does not exist on the BIG-IP
         """
-        LOGGER.info("Updating %s: /%s/%s",
+        LOGGER.info("KJR: Updating %s: /%s/%s",
                     self.classname(), self.partition, self.name)
         if not data:
             data = self._data
@@ -186,6 +186,7 @@ class Resource(object):
             if modify:
                 obj.modify(**payload)
             else:
+                LOGGER.info("KJR: Update called")
                 obj.update(**payload)
         except iControlUnexpectedHTTPError as err:
             self._handle_http_error(err)
