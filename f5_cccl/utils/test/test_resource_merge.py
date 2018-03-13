@@ -17,7 +17,14 @@
 
 from f5_cccl.utils.resource_merge import merge
 
-def test_scalars():
+#
+# CCCL merge takes it's required resource properties and
+# merges it into the Big-IP existing properties.  If there
+# is a conflict, the CCCL properties win.  Also, for lists
+# CCCL entries are listed first.
+#
+
+def test_resource_merge_scalars():
     """ Test simple scalar merging (replacing) """
 
     test_data = [
@@ -33,7 +40,7 @@ def test_scalars():
         assert merge(existing, desired) == expected
 
 
-def test_simple_arrays():
+def test_resource_merge_simple_arrays():
     """ Test simple list merging (replacing) """
 
     test_data = [
@@ -42,20 +49,20 @@ def test_simple_arrays():
         ([], [1], [1]),
         ([1], [], [1]),
         ([1], [2], [1, 2]),
-        ([2], [1], [1, 2]),
+        ([2], [1], [2, 1]),
         ([1, 2], [1], [1, 2]),
         ([1], [1, 2], [1, 2]),
-        ([1, 3], [1, 2], [1, 2, 3]),
-        (['apple', 'orange'], ['apple', 'pear'], ['apple', 'pear', 'orange'])
+        ([1, 3], [1, 2], [1, 3, 2]),
+        (['apple', 'orange'], ['apple', 'pear'], ['apple', 'orange', 'pear'])
     ]
     for test in test_data:
         desired = test[0]
         existing = test[1]
         expected = test[2]
-        assert merge(existing, desired).sort() == expected.sort()
+        assert merge(existing, desired) == expected
 
 
-def test_simple_dict():
+def test_resource_merge_simple_dict():
     """ Test simple dictionary merging """
 
     test_data = [
@@ -74,26 +81,56 @@ def test_simple_dict():
         assert merge(existing, desired) == expected
 
 
-def test_list_of_named_dict():
+def test_resource_merge_list_of_named_dict():
     """ Test merge lists of named dictionary objects
 
         This is unique for Big-IP resources that are
-        lists of named objects
+        lists of named objects (the resources must have
+        a unique property 'name').
     """
 
     test_data = [
         # desired, existing, merged
-        ([], [], []),
-        ([], [{'name': 'resource-a', 'value': 1}], [{'name': 'resource-a', 'value': 1}]),
-        ([{'name': 'resource-a', 'value': 1}], [], [{'name': 'resource-a', 'value': 1}]),
-        ([{'name': 'resource-a', 'value': 1}], [{'name': 'resource-a', 'value': 3}], [{'name': 'resource-a', 'value': 1}]),
-        ([{'name': 'resource-a', 'value1': 1, 'value2': 2}],
-         [{'name': 'resource-a', 'value2': 0, 'value3': 3}],
-         [{'name': 'resource-a', 'value1': 1, 'value2': 2, 'value3': 3}]),
-        ([{'name': 'resource-a', 'value1': 1, 'value2': 2}, {'name': 'resource-b', 'valueB': 'b'}],
-         [{'name': 'resource-a', 'value2': 0, 'value3': 3}, {'name': 'resource-c', 'valueC': 'c'}],
-         [{'name': 'resource-a', 'value1': 1, 'value2': 2, 'value3': 3},
-          {'name': 'resource-b', 'valueB': 'b'}, {'name': 'resource-c', 'valueC': 'c'}])
+        (
+            [],
+            [],
+            []
+        ),
+        (
+            [],
+            [{'name': 'resource-a', 'value': 1}],
+            [{'name': 'resource-a', 'value': 1}]
+        ),
+        (
+            [{'name': 'resource-a', 'value': 1}],
+            [],
+            [{'name': 'resource-a', 'value': 1}]),
+        (
+            [{'name': 'resource-a', 'value': 1}],
+            [{'name': 'resource-a', 'value': 3}],
+            [{'name': 'resource-a', 'value': 1}]
+        ),
+        (
+            [{'name': 'resource-a', 'value1': 1, 'value2': 2}],
+            [{'name': 'resource-a', 'value2': 0, 'value3': 3}],
+            [{'name': 'resource-a', 'value1': 1, 'value2': 2}]
+        ),
+        (
+            [
+                {'name': 'resource-a', 'value1': 1, 'value2': 2},
+                {'name': 'resource-b', 'valueB': 'b'}
+            ],
+            [
+                {'name': 'resource-a', 'value2': 0, 'value3': 3},
+                {'name': 'resource-c', 'valueC': 'c'},
+                {'name': 'resource-b', 'valueB': 'b'}
+            ],
+            [
+                {'name': 'resource-a', 'value1': 1, 'value2': 2},
+                {'name': 'resource-b', 'valueB': 'b'},
+                {'name': 'resource-c', 'valueC': 'c'}
+            ]
+        )
     ]
     for test in test_data:
         desired = test[0]
@@ -102,144 +139,75 @@ def test_list_of_named_dict():
         assert merge(existing, desired) == expected
 
 
-def test_sample_resource():
-    """ Test merge lists of named dictionary objects
-
-        This is unique for Big-IP resources that are
-        lists of named objects
-    """
+def test_resource_merge_sample_resource():
+    """ Test actual Big-IP resource """
 
     desired = {
         'destination': '/test/172.16.3.59%0:80',
-        'name': u'ingress_172-16-3-59_80',
+        'name': 'ingress_172-16-3-59_80',
         'rules': [],
         'vlansDisabled': True,
         'enabled': True,
-        'sourceAddressTranslation': {
-            u'type': u'automap'
-        },
-        'partition': u'test',
+        'sourceAddressTranslation': {'type': 'automap'},
+        'partition': 'test',
         'source': '0.0.0.0%0/0',
         'profiles': [
-            {
-                u'partition': u'Common',
-                u'name': u'http',
-                u'context': u'all'
-            },
-            {
-                u'partition': u'Common',
-                u'name': u'tcp',
-                u'context': u'all'
-            }
+            {'partition': 'Common', 'name': 'http', 'context': 'all'},
+            {'partition': 'Common', 'name': 'tcp', 'context': 'all'}
         ],
         'connectionLimit': 0,
-        'ipProtocol': u'tcp',
+        'ipProtocol': 'tcp',
         'vlans': [],
         'policies': [
-            {
-                u'partition': u'test',
-                u'name': u'ingress_172-16-3-59_80'
-            }
+            {'partition': 'test', 'name': 'ingress_172-16-3-59_80'}
         ]
     }
 
     existing = {
         'destination': '/test/172.16.3.59%0:80',
-        'name': u'ingress_172-16-3-59_80',
+        'name': 'ingress_172-16-3-59_80',
         'rules': [],
-        'vlansDisabled': False, # This should change
+        'vlansDisabled': False,  # should change
         'enabled': True,
-        'sourceAddressTranslation': {
-            u'type': u'snat' # This should change
-        },
-        'partition': u'test',
+        'sourceAddressTranslation': {'type': 'snat'},  # should change
+        'partition': 'test',
         'source': '0.0.0.0%0/0',
         'profiles': [
-            {
-                'partition': u'Common',
-                'name': u'html',
-                'context': u'all'
-            },
-            { # This should be kept
-                'partition': u'Common',
-                'name': u'http',
-                'context': u'all'
-            },
-            {
-                'partition': u'Common',
-                'name': u'tcp',
-                'context': u'all'
-            }
+            # html profile should be kept, but added after CCCL entries
+            {'partition': 'Common', 'name': 'html', 'context': 'all'},
+            {'partition': 'Common', 'name': 'http', 'context': 'all'},
+            {'partition': 'Common', 'name': 'tcp', 'context': 'all'}
         ],
-        'connectionLimit': 1, # This should change
-        'ipProtocol': u'tcp',
+        'connectionLimit': 1,  # should change
+        'ipProtocol': 'tcp',
         'vlans': [
-            { # This should be added
-                'name': 'vlan',
-                'a': '1',
-                'b': '2'
-            }
+            {'name': 'vlan', 'a': '1', 'b': '2'}  # should be kept
         ],
-        'policies': []  # This should be replaced
+        'policies': []  # will be added to
     }
-    
+
     expected = {
         'destination': '/test/172.16.3.59%0:80',
-        'name': u'ingress_172-16-3-59_80',
+        'name': 'ingress_172-16-3-59_80',
         'rules': [],
         'vlansDisabled': True,
         'enabled': True,
-        'sourceAddressTranslation': {
-            u'type': u'automap'
-        },
-        'partition': u'test',
+        'sourceAddressTranslation': {'type': 'automap'},
+        'partition': 'test',
         'source': '0.0.0.0%0/0',
         'profiles': [
-            {
-                'partition': u'Common',
-                'name': u'html',
-                'context': u'all'
-            },
-            {
-                'partition': u'Common',
-                'name': u'http',
-                'context': u'all'
-            },
-            {
-                'partition': u'Common',
-                'name': u'tcp',
-                'context': u'all'
-            }
+            {'partition': 'Common', 'name': 'http', 'context': 'all'},
+            {'partition': 'Common', 'name': 'tcp', 'context': 'all'},
+            {'partition': 'Common', 'name': 'html', 'context': 'all'}
         ],
         'connectionLimit': 0,
-        'ipProtocol': u'tcp',
+        'ipProtocol': 'tcp',
         'vlans': [
-            {
-                'name': 'vlan',
-                'a': '1',
-                'b': '2'
-            }
+            {'name': 'vlan', 'a': '1', 'b': '2'}
         ],
         'policies': [
-            {
-                u'partition': u'test',
-                u'name': u'ingress_172-16-3-59_80'
-            }
+            {'partition': 'test', 'name': 'ingress_172-16-3-59_80'}
         ]
     }
-    
-    assert merge(existing, desired) == expected
-
-
-def test_sample_resource2():
-    """ Test merge lists of named dictionary objects
-
-        This is unique for Big-IP resources that are
-        lists of named objects
-    """
-
-    desired = {'destination': '/test/172.16.3.60%0:80', 'name': u'ingress_172-16-3-60_80', 'rules': [], 'vlansDisabled': True, 'enabled': True, 'sourceAddressTranslation': {u'type': u'automap'}, 'partition': u'test', 'source': '0.0.0.0%0/0', 'profiles': [{u'partition': u'Common', u'name': u'http', u'context': u'all'}, {u'partition': u'Common', u'name': u'tcp', u'context': u'all'}], 'connectionLimit': 0, 'ipProtocol': u'tcp', 'vlans': [], 'policies': [{u'partition': u'test', u'name': u'ingress_172-16-3-60_80'}]}
-    existing = {'destination': '/test/172.16.3.60%0:80', 'name': u'ingress_172-16-3-60_80', 'rules': [], 'vlansDisabled': True, 'enabled': True, 'sourceAddressTranslation': {u'type': u'automap'}, 'partition': u'test', 'source': '0.0.0.0%0/0', 'profiles': [{'partition': u'Common', 'name': u'html', 'context': u'all'}, {'partition': u'Common', 'name': u'http', 'context': u'all'}, {'partition': u'Common', 'name': u'tcp', 'context': u'all'}], 'connectionLimit': 0, 'ipProtocol': u'tcp', 'vlans': [], 'policies': []}
-    expected = {'destination': '/test/172.16.3.60%0:80', 'name': u'ingress_172-16-3-60_80', 'rules': [], 'vlansDisabled': True, 'enabled': True, 'sourceAddressTranslation': {u'type': u'automap'}, 'partition': u'test', 'source': '0.0.0.0%0/0', 'profiles': [{u'partition': u'Common', u'name': u'html', u'context': u'all'}, {u'partition': u'Common', u'name': u'http', u'context': u'all'}, {u'partition': u'Common', u'name': u'tcp', u'context': u'all'}], 'connectionLimit': 0, 'ipProtocol': u'tcp', 'vlans': [], 'policies': [{u'partition': u'test', u'name': u'ingress_172-16-3-60_80'}]}
 
     assert merge(existing, desired) == expected

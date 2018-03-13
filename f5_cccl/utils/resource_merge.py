@@ -17,9 +17,14 @@
 #
 
 import copy
+import logging
+
 from functools import reduce as reducer  # name conflict between python 2 & 3
 from itertools import groupby
 from operator import itemgetter
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _merge_dict_by():
@@ -48,7 +53,31 @@ def _merge_list_of_dict_by(key):
     ]
 
 
-_merge_list_by_dict_name = _merge_list_of_dict_by('name')
+def _merge_list_of_dict_by_name(dst, src):
+    """Merge list of Big-IP dictionary records uniquely identified by name.
+
+       Duplicates are not merged, but replaced. Src is added to front.
+    """
+    merge_list = []
+    merge_set = set()
+    for record in src:
+        merge_list.append(record)
+        merge_set.add(record['name'])
+    for record in dst:
+        if record['name'] not in merge_set:
+            merge_list.append(record)
+    return merge_list
+
+
+def _merge_list_of_scalars(dst, src):
+    """Merge list of scalars (add src first, then remaining unique dst)"""
+    dst_copy = copy.copy(dst)
+    src_set = set(src)
+    dst = copy.copy(src)
+    for val in dst_copy:
+        if val not in src_set:
+            dst.append(val)
+    return dst
 
 
 def _merge_list(dst, src):
@@ -60,13 +89,12 @@ def _merge_list(dst, src):
     if not dst:
         return src
     elif isinstance(dst[0], dict):
-        dst = _merge_list_by_dict_name(dst + src)
+        dst = _merge_list_of_dict_by_name(dst, src)
     elif isinstance(dst[0], list):
         # May cause duplicates (what is a duplicate for lists of lists?)
-        dst = dst + src
+        dst = src + dst
     else:
-        # scalars (remove duplicates)
-        dst = list(set(dst + src))
+        dst = _merge_list_of_scalars(dst, src)
     return dst
 
 
@@ -81,10 +109,12 @@ def _merge_dict(dst, src):
 def merge(dst, src):
     """Merge two resources together with the src fields taking precedence.
 
-       Note: this is tailored for Big-IP resources and
+       Note: this is specifically tailored for Big-IP resources and
              does not generically support all type variations)
     """
 
+    LOGGER.debug("Merging source: %s", src)
+    LOGGER.debug("Merging destination: %s", dst)
     # pylint: disable=C0123
     if type(dst) != type(src):
         # can't merge differing types, src wins everytime
@@ -97,4 +127,5 @@ def merge(dst, src):
     else:
         # scalar
         dst = src
+    LOGGER.debug("Merged result: %s", dst)
     return dst
