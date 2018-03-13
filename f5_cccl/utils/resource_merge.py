@@ -22,7 +22,7 @@ from itertools import groupby
 from operator import itemgetter
 
 
-def merge_dict_by():
+def _merge_dict_by():
     """Returns a function that merges two dictionaries dst and src.
 
        Keys are merged together between the dst and src dictionaries.
@@ -35,7 +35,7 @@ def merge_dict_by():
     }
 
 
-def merge_list_of_dict_by(key):
+def _merge_list_of_dict_by(key):
     """Returns a function that merges a list of dictionary records
 
        Records are grouped by the specified key.
@@ -43,12 +43,12 @@ def merge_list_of_dict_by(key):
 
     keyprop = itemgetter(key)
     return lambda lst: [
-        reducer(merge_dict_by(), records)
+        reducer(_merge_dict_by(), records)
         for _, records in groupby(sorted(lst, key=keyprop), keyprop)
     ]
 
 
-merge_list_by_dict_name = merge_list_of_dict_by('name')
+_merge_list_by_dict_name = _merge_list_of_dict_by('name')
 
 
 def _merge_list(dst, src):
@@ -60,7 +60,7 @@ def _merge_list(dst, src):
     if not dst:
         return src
     elif isinstance(dst[0], dict):
-        dst = merge_list_by_dict_name(dst + src)
+        dst = _merge_list_by_dict_name(dst + src)
     elif isinstance(dst[0], list):
         # May cause duplicates (what is a duplicate for lists of lists?)
         dst = dst + src

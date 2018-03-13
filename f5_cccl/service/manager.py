@@ -47,7 +47,15 @@ class ServiceConfigDeployer(object):
         self._bigip = bigip_proxy
 
     def _get_resource_tasks(self, existing, desired):
-        """Get the list of resources to create, delete, update."""
+        """Get the list of resources to create, delete, update.
+
+           Here, the term 'manage' means absolute control by CCCL.
+           The term 'unmanaged' means the end-user has control over
+           the resource except for fields we must change. We don't
+           undo end-user changes (unless it conflicts with CCCL
+           requested changes) and we don't delete the resource.
+        """
+
         unmanaged = {
             name: resource for name, resource in existing.items()
             if resource.whitelist is True
