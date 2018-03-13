@@ -30,18 +30,6 @@ from f5_cccl.utils.resource_merge import merge
 LOGGER = logging.getLogger(__name__)
 
 
-def merge_dict(dst, src):
-    u"""Merge src dictionary into dst, replacing existing entries"""
-
-    if not isinstance(dst, dict) or not isinstance(src, dict):
-        return src
-
-    for key in src.keys():
-        dst[key] = merge_dict(dst[key], src[key]) if key in dst else src[key]
-
-    return dst
-
-
 class Resource(object):
     u"""Resource super class to wrap BIG-IP configuration objects.
 
