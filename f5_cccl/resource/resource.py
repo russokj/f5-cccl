@@ -17,15 +17,21 @@ u"""This module provides class for managing resource configuration."""
 # limitations under the License.
 #
 
+import base64
 import copy
 import logging
+import zlib
+
+import jsonpatch
 
 from f5.sdk_exception import F5SDKError
 from icontrol.exceptions import iControlUnexpectedHTTPError
 from requests.utils import quote as urlquote
 
 import f5_cccl.exceptions as cccl_exc
+import f5_cccl.utils.json_pos_patch as pospatch
 from f5_cccl.utils.resource_merge import merge
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -78,6 +84,8 @@ class Resource(object):
         self._data['partition'] = partition
         # user defined objects that must not be removed, even if not referenced
         self._whitelist = False
+        # previously applied updates by CCCL to the resource
+        self._whitelist_updates = None
 
         if properties:
             for key, default in self.common_properties.items():
@@ -113,10 +121,42 @@ class Resource(object):
     def __str__(self):
         return str(self._data)
 
-    def merge(self, resource):
-        u"""Merge in properties from external resource (overwrite existing)"""
+    def merge(self, desired_data):
+        u"""Merge in properties from controller instead of replacing"""
+        # 1. stop processing if no merging is needed
+        prev_updates = self._retrieve_whitelist_updates()
+        if desired_data == {} and prev_updates is None:
+            # nothing needs to be done (cccl has not and will not make changes
+            # to this resource)
+            return False
+        prev_data = copy.deepcopy(self._data)
 
-        self._data = merge(self.data, resource.data)
+        # 2. remove old CCCL updates
+        pospatch.convert_to_positional_patch(self._data, prev_updates)
+        try:
+            # This actually backs out the previous updates
+            # to get back to the original F5 resource state.
+            if prev_updates:
+                self._data = prev_updates.apply(self._data)
+        except Exception as e:  # pylint: disable=broad-except
+            LOGGER.warning("Failed removing updates to resource %s: %s",
+                           self.name, e)
+
+        # 3. perform new merge with latest CCCL specific config
+        original_resource = copy.deepcopy(self)
+        self._data = merge(self._data, desired_data)
+
+        # 4. compute the new updates so we can back out next go-around
+        cur_updates = jsonpatch.make_patch(self._data, original_resource.data)
+
+        # 5. remove move / adjust indexes per resource specific
+        pospatch.convert_from_positional_patch(self._data, cur_updates)
+
+        # 6. update metadata with new CCCL updates
+        self._save_whitelist_updates(cur_updates)
+
+        # 7. determine if there was a needed change
+        return self._data != prev_data
 
     def create(self, bigip):
         u"""Create resource on a BIG-IP system.
@@ -266,6 +306,41 @@ class Resource(object):
         u"""Flag to indicate if user-created resource should be ignored"""
         return self._whitelist
 
+    def _save_whitelist_updates(self, updates):
+        u"""Saves the updates applied to this whitelisted object"""
+        if not self._whitelist:
+            LOGGER.error('Cannot apply updates to the non-whitelisted '
+                         'object %s', self.full_path())
+        elif updates:
+            self._whitelist_updates = base64.b64encode(
+                zlib.compress(updates.to_string()))
+            update_metadata = {
+                'metadata': [{
+                    'name': 'cccl-whitelist-updates',
+                    'persist': 'true',
+                    'value': self._whitelist_updates
+                }]
+            }
+            self._data = merge(self._data, update_metadata)
+
+    def _retrieve_whitelist_updates(self):
+        u"""Retrieves the updates and ret to this whitelisted object"""
+
+        updates = None
+        if not self._whitelist:
+            LOGGER.error('Cannot retrieve updates to the non-whitelisted '
+                         'object %s', self.full_path())
+        else:
+            if self._whitelist_updates is not None:
+                try:
+                    update_str = zlib.decompress(
+                        base64.b64decode(self._whitelist_updates))
+                    updates = jsonpatch.JsonPatch.from_string(update_str)
+                except Exception:  # pylint: disable=broad-except
+                    LOGGER.error('Cannot process previous updates for the '
+                                 'whitelisted resource %s', self.full_path())
+        return updates
+
     def full_path(self):
         u"""Concatenate the partition and name to form fullPath."""
         return "/{}/{}".format(self.partition, self.name)
@@ -302,5 +377,9 @@ class Resource(object):
             if metadata['name'] == 'cccl-whitelist':
                 self._whitelist = metadata['value'] in [
                     'true', 'True', 'TRUE', '1', 1]
-                LOGGER.debug('Resource %s whitelist: %s',
+                LOGGER.debug('Resource %s cccl-whitelist: %s',
                              name, self._whitelist)
+            if metadata['name'] == 'cccl-whitelist-updates':
+                self._whitelist_updates = metadata['value']
+                LOGGER.debug('Resource %s cccl-whitelist-updates: %s',
+                             name, self._whitelist_updates)

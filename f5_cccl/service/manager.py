@@ -18,7 +18,6 @@
 
 from __future__ import print_function
 
-import copy
 import logging
 from time import time
 
@@ -55,7 +54,6 @@ class ServiceConfigDeployer(object):
            undo end-user changes (unless it conflicts with CCCL
            requested changes) and we don't delete the resource.
         """
-
         unmanaged = {
             name: resource for name, resource in existing.items()
             if resource.whitelist is True
@@ -83,7 +81,7 @@ class ServiceConfigDeployer(object):
         ]
 
         # Merge unmanaged resources with desired if needed
-        for resource in desired_set & unmanaged_set:
+        for resource in unmanaged_set:
             update_resource = self._merge_resource(
                 resource, desired, unmanaged)
             if update_resource:
@@ -97,14 +95,20 @@ class ServiceConfigDeployer(object):
         return (create_list, update_list, delete_list)
 
     def _merge_resource(self, resource, desired, unmanaged):
-        """Merge desired settings with existing settings"""
+        """Merge desired settings with existing settings.
 
-        # if whitelist object, merge in desired with the existing properties
-        merged = copy.deepcopy(unmanaged[resource])
-        merged.merge(desired[resource])
+           If there are any differences, return the merged object.
+        """
+        unmanaged_resource = unmanaged[resource]  # this always exists
+        desired_resource = desired.get(resource)
+        if desired_resource is None:
+            desired_data = {}
+        else:
+            desired_data = desired_resource.data
 
-        if merged != unmanaged[resource]:
-            return merged
+        # determine if any changes occurred after merging
+        if unmanaged_resource.merge(desired_data):
+            return unmanaged_resource
         return None
 
     def _create_resources(self, create_list):
