@@ -60,10 +60,14 @@ class ServiceConfigDeployer(object):
             existing[resource] for resource in
             set(existing) - set(desired)
         ]
+        # LOGGER.info("KJR: Create list: {}".format(create_list))
+        # LOGGER.info("KJR: Update list: {}".format(update_list))
+        # LOGGER.info("KJR: Delete list: {}".format(delete_list))
         return (create_list, update_list, delete_list)
 
     def _create_resources(self, create_list):
         """Iterate over the resources and call create method."""
+        LOGGER.info("KJR Creating %d resources...", len(create_list))
         LOGGER.debug("Creating %d resources...", len(create_list))
         retry_list = list()
         for resource in create_list:
@@ -88,9 +92,11 @@ class ServiceConfigDeployer(object):
 
     def _update_resources(self, update_list):
         """Iterate over the resources and call update method."""
+        LOGGER.info("KJR Updating %d resources...", len(update_list))
         LOGGER.debug("Updating %d resources...", len(update_list))
         retry_list = list()
         for resource in update_list:
+            LOGGER.info("KJR Updating resource:\n{}".format(resource))
             try:
                 start_time = time()
                 resource.update(self._bigip.mgmt_root())
@@ -113,6 +119,7 @@ class ServiceConfigDeployer(object):
 
     def _delete_resources(self, delete_list, retry=True):
         """Iterate over the resources and call delete method."""
+        LOGGER.info("KJR Deleting %d resources...", len(delete_list))
         LOGGER.debug("Deleting %d resources...", len(delete_list))
         retry_list = list()
         for resource in delete_list:
@@ -321,6 +328,7 @@ class ServiceConfigDeployer(object):
         self._bigip.refresh_ltm()
 
         # Get the list of virtual address tasks
+        LOGGER.info("KJR Getting virtual address tasks...")
         LOGGER.debug("Getting virtual address tasks...")
         existing = self._bigip.get_virtual_addresses()
         desired = desired_config.get('virtual_addresses', dict())
@@ -328,6 +336,7 @@ class ServiceConfigDeployer(object):
             self._get_resource_tasks(existing, desired))[0:2]
 
         # Get the list of virtual server tasks
+        LOGGER.info("KJR Getting virtual server tasks...")
         LOGGER.debug("Getting virtual server tasks...")
         existing_virtuals = self._bigip.get_virtuals()
         desired = desired_config.get('virtuals', dict())
@@ -335,6 +344,7 @@ class ServiceConfigDeployer(object):
             self._get_resource_tasks(existing_virtuals, desired))
 
         # Get the list of pool tasks
+        LOGGER.info("KJR Getting pool tasks...")
         LOGGER.debug("Getting pool tasks...")
         existing_pools = self._bigip.get_pools()
         desired = desired_config.get('pools', dict())
@@ -342,6 +352,7 @@ class ServiceConfigDeployer(object):
             self._get_resource_tasks(existing_pools, desired))
 
         # Get the list of irule tasks
+        LOGGER.info("KJR Getting iRule tasks...")
         LOGGER.debug("Getting iRule tasks...")
         existing = self._bigip.get_irules()
         desired = desired_config.get('irules', dict())
@@ -349,6 +360,7 @@ class ServiceConfigDeployer(object):
             self._get_resource_tasks(existing, desired))
 
         # Get the list of internal data group tasks
+        LOGGER.info("KJR Getting InternalDataGroup tasks...")
         LOGGER.debug("Getting InternalDataGroup tasks...")
         existing = self._bigip.get_internal_data_groups()
         desired = desired_config.get('internaldatagroups', dict())
@@ -357,6 +369,7 @@ class ServiceConfigDeployer(object):
              self._get_resource_tasks(existing, desired))
 
         # Get the list of policy tasks
+        LOGGER.info("KJR Getting policy tasks...")
         LOGGER.debug("Getting policy tasks...")
         existing = self._bigip.get_l7policies()
         desired = desired_config.get('l7policies', dict())
@@ -364,6 +377,7 @@ class ServiceConfigDeployer(object):
             self._get_resource_tasks(existing, desired))
 
         # Get the list of iapp tasks
+        LOGGER.info("KJR Getting iApp tasks...")
         LOGGER.debug("Getting iApp tasks...")
         existing_iapps = self._bigip.get_app_svcs()
         desired = desired_config.get('iapps', dict())
@@ -371,10 +385,12 @@ class ServiceConfigDeployer(object):
             self._get_resource_tasks(existing_iapps, desired))
 
         # Get the list of monitor tasks
+        LOGGER.info("KJR Getting monitor tasks...")
         LOGGER.debug("Getting monitor tasks...")
         (create_monitors, update_monitors, delete_monitors) = (
             self._get_monitor_tasks(desired_config))
 
+        LOGGER.info("KJR Building task lists...")
         LOGGER.debug("Building task lists...")
         create_tasks = create_vaddrs + create_monitors + \
             create_pools + create_internal_data_groups + create_irules + \
@@ -445,6 +461,7 @@ class ServiceConfigDeployer(object):
         # queue, it is determined that progress has stopped and the
         # loop is exited with work remaining.
         finished = False
+        LOGGER.info("KJR: --------------------------------------------------------------")
         while not finished:
             LOGGER.debug("Service task queue length: %d", taskq_len)
 
