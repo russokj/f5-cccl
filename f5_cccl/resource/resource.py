@@ -174,7 +174,7 @@ class Resource(object):
             F5CcclResourceNotFoundError: resouce cannot be updated because
             it does not exist on the BIG-IP
         """
-        LOGGER.info("KJR: Updating %s: /%s/%s",
+        LOGGER.info("KJR2: Updating %s: /%s/%s",
                     self.classname(), self.partition, self.name)
         if not data:
             data = self._data

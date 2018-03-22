@@ -91,6 +91,7 @@ class ApplicationService(Resource):
             bigip (f5.bigip.ManagementRoot): F5 SDK session object
         """
         self._data['executeAction'] = 'definition'
+        LOGGER.info("iapp update with the following data: {}".format(self._data))
         super(ApplicationService, self).update(bigip, data=data, modify=modify)
 
 
