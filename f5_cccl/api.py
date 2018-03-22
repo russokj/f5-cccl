@@ -60,7 +60,6 @@ class F5CloudServiceManager(object):
         # Set user-agent for ICR session
         if user_agent is not None:
             bigip.icrs.append_user_agent(user_agent)
-        self._user_agent = user_agent
 
         self._bigip_proxy = BigIPProxy(bigip,
                                        partition,
@@ -81,8 +80,7 @@ class F5CloudServiceManager(object):
 
         :return: True if successful, otherwise an exception is thrown.
         """
-        return self._service_manager.apply_ltm_config(services,
-                                                      self._user_agent)
+        return self._service_manager.apply_ltm_config(services)
 
     def apply_net_config(self, services):
         """Apply NET service configurations to the BIG-IP partition.

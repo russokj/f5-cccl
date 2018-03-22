@@ -48,12 +48,7 @@ bigip_pools_cfg = [
               'description': None}
          ]
      },
-     'name': u'pool1',
-     'metadata': [{
-       'name': 'user_agent',
-       'persist': 'true',
-       'value': 'some-controller-v.1.4.0'
-     }]
+     'name': u'pool1'
     },
     {'description': None,
      'partition': 'Common',
@@ -70,12 +65,7 @@ cccl_pools_cfg = [
           {"address": "172.16.0.100%0", "port": 8080},
           {"address": "172.16.0.101%0", "port": 8080}
       ],
-      "monitors": ["/Common/http"],
-      'metadata': [{
-        'name': 'user_agent',
-        'persist': 'true',
-        'value': 'some-controller-v.1.4.0'
-      }]
+      "monitors": ["/Common/http"]
     },
     { "name": "pool2",
       "members": [
@@ -177,7 +167,6 @@ def test_create_pool(cccl_pool1):
     assert pool.data['loadBalancingMode'] == "round-robin"
     assert not pool.data['description']
     assert pool.data['monitor'] == "/Common/http"
-    assert 'metadata' in pool.data
 
     assert len(pool) == 2
 

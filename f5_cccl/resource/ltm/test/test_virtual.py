@@ -48,12 +48,7 @@ cfg_test = {
     "sourceAddressTranslation": {
 	"type": "snat",
 	"pool": "/Test/snatpool1"
-    },
-    'metadata': [{
-        'name': 'user_agent',
-        'persist': 'true',
-        'value': 'some-controller-v.1.4.0'
-    }]
+    }
 }
 
 
@@ -340,12 +335,7 @@ cfg_test_api_virtual = {
     "sourceAddressTranslation": {
 	"type": "snat",
 	"pool": "/Test/snatpool1"
-    },
-    'metadata': [{
-        'name': 'user_agent',
-        'persist': 'true',
-        'value': 'some-controller-v.1.4.0'
-    }]
+    }
 }
 
 
