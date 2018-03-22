@@ -91,7 +91,9 @@ class ApplicationService(Resource):
             bigip (f5.bigip.ManagementRoot): F5 SDK session object
         """
         self._data['executeAction'] = 'definition'
-        super(ApplicationService, self).update(bigip, data=data, modify=modify)
+        # Only patch IAPP changes due to user role privilege requirements
+        # with handling traffic groups (must be Admin, or Resource Admin)
+        super(ApplicationService, self).update(bigip, data=data, modify=True)
 
 
 class IcrApplicationService(ApplicationService):
