@@ -359,12 +359,6 @@ LTM_RESOURCE_TEST_DATA = [
             {
                 'changedBigipProperties': {'c': [3, 4, 2]},
                 'requestedCcclProperties': {'c': [3, 4]},
-                'updateRequired': True,
-                'mergedBigipProperties': {'c': [3, 4, 2]}
-            },
-            {
-                'changedBigipProperties': {'c': [3, 4, 2]},
-                'requestedCcclProperties': {'c': [3, 4]},
                 'updateRequired': False,
                 'mergedBigipProperties': {'c': [3, 4, 2]}
             },
@@ -614,7 +608,6 @@ LTM_RESOURCE_TEST_DATA = [
     }
 ]
 
-
 class GenericResource(Resource):
     """Mock resource"""
 
@@ -686,3 +679,7 @@ def test_merge_cccl_resource_properties():
             assert expected_bigip_resource == \
                    current_bigip_resource.scrub_data(), \
                    "Failed test: {}".format(test['name'])
+            current_data = current_bigip_resource.data
+            del current_data['name']
+            del current_data['partition']
+            current_bigip_resource = GenericResource(current_data)

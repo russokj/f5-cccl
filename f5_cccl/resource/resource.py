@@ -19,6 +19,7 @@ u"""This module provides class for managing resource configuration."""
 
 import base64
 import copy
+import json
 import logging
 import zlib
 
@@ -85,7 +86,7 @@ class Resource(object):
         # user defined objects that must not be removed, even if not referenced
         self._whitelist = False
         # previously applied updates by CCCL to the resource
-        self._whitelist_updates = None
+        self._whitelist_encoded_updates = None
 
         if properties:
             for key, default in self.common_properties.items():
@@ -124,12 +125,15 @@ class Resource(object):
     def merge(self, desired_data):
         u"""Merge in properties from controller instead of replacing"""
         # 1. stop processing if no merging is needed
+        LOGGER.info("KJR PREV DATA INIT: {}".format(json.dumps(self._data)))
+        LOGGER.info("KJR DESIRED DATA:   {}".format(json.dumps(desired_data)))
         prev_updates = self._retrieve_whitelist_updates()
         if desired_data == {} and prev_updates is None:
             # nothing needs to be done (cccl has not and will not make changes
             # to this resource)
             return False
         prev_data = copy.deepcopy(self._data)
+        LOGGER.info("KJR PREV DATA 1: {}".format(json.dumps(prev_data)))
 
         # 2. remove old CCCL updates
         pospatch.convert_to_positional_patch(self._data, prev_updates)
@@ -142,21 +146,38 @@ class Resource(object):
             LOGGER.warning("Failed removing updates to resource %s: %s",
                            self.name, e)
 
+        LOGGER.info("KJR Saving off Current Metadata: {}".format(self._data['metadata']))
+        metadata = self._data['metadata']
+        del self._data['metadata']
+
         # 3. perform new merge with latest CCCL specific config
         original_resource = copy.deepcopy(self)
-        self._data = merge(self._data, desired_data)
+        try:
+            self._data = merge(self._data, desired_data)
+        except Exception as e:  # pylint: disable=broad-except
+            LOGGER.warning("Failed merging in resource %s: %s",
+                           self.name, e)
+            return False
 
         # 4. compute the new updates so we can back out next go-around
         cur_updates = jsonpatch.make_patch(self._data, original_resource.data)
 
+        self._data['metadata'] = metadata
+
         # 5. remove move / adjust indexes per resource specific
         pospatch.convert_from_positional_patch(self._data, cur_updates)
+
+        LOGGER.info("KJR PREV DATA 2: {}".format(json.dumps(prev_data)))
+        LOGGER.info("KJR CURR DATA:   {}".format(json.dumps(self._data)))
+        changed = self._data != prev_data
 
         # 6. update metadata with new CCCL updates
         self._save_whitelist_updates(cur_updates)
 
         # 7. determine if there was a needed change
-        return self._data != prev_data
+        if changed:
+            LOGGER.error("***************************************DATA CHANGED***************************************")
+        return changed
 
     def create(self, bigip):
         u"""Create resource on a BIG-IP system.
@@ -312,16 +333,16 @@ class Resource(object):
             LOGGER.error('Cannot apply updates to the non-whitelisted '
                          'object %s', self.full_path())
         elif updates:
-            self._whitelist_updates = base64.b64encode(
+            LOGGER.info("KJR: Saved whitelist updates for %s: %s",
+                        self.name, updates)
+            whitelist_encoded_updates = base64.b64encode(
                 zlib.compress(updates.to_string()))
             update_metadata = {
-                'metadata': [{
                     'name': 'cccl-whitelist-updates',
                     'persist': 'true',
-                    'value': self._whitelist_updates
-                }]
+                    'value': whitelist_encoded_updates
             }
-            self._data = merge(self._data, update_metadata)
+            self._data['metadata'].append(update_metadata)
 
     def _retrieve_whitelist_updates(self):
         u"""Retrieves the updates and ret to this whitelisted object"""
@@ -331,14 +352,22 @@ class Resource(object):
             LOGGER.error('Cannot retrieve updates to the non-whitelisted '
                          'object %s', self.full_path())
         else:
-            if self._whitelist_updates is not None:
+            LOGGER.info("KJR: Retrieved whitelist encoded updates for %s: %s",
+                        self.name, self._whitelist_encoded_updates)
+            if self._whitelist_encoded_updates is not None:
                 try:
                     update_str = zlib.decompress(
-                        base64.b64decode(self._whitelist_updates))
+                        base64.b64decode(self._whitelist_encoded_updates))
                     updates = jsonpatch.JsonPatch.from_string(update_str)
                 except Exception:  # pylint: disable=broad-except
                     LOGGER.error('Cannot process previous updates for the '
                                  'whitelisted resource %s', self.full_path())
+                # FIXME(kenr) self._whitelist_encoded_updates = None
+
+        # FIXME(kenr): SHOULD BE DEBUG
+        # FIXME(kenr): not needed? self._whitelist_updates = False
+        LOGGER.info("KJR: Retrieved whitelist updates for %s: %s",
+                    self.name, updates)
         return updates
 
     def full_path(self):
@@ -371,15 +400,29 @@ class Resource(object):
         else:
             raise cccl_exc.F5CcclError(str(error))
 
+#
+# FIXME:
+# remove metadata before computing 
+# don't remove old whtielist-update
+# compare with array index independence
+# don't compute new whitelist if no change
+#
     def _process_metadata_flags(self, name, metadata_list):
         # look for supported flags
-        for metadata in metadata_list:
+        update_idx = None
+        for idx, metadata in enumerate(metadata_list):
             if metadata['name'] == 'cccl-whitelist':
                 self._whitelist = metadata['value'] in [
                     'true', 'True', 'TRUE', '1', 1]
                 LOGGER.debug('Resource %s cccl-whitelist: %s',
                              name, self._whitelist)
             if metadata['name'] == 'cccl-whitelist-updates':
-                self._whitelist_updates = metadata['value']
+                self._whitelist_encoded_updates = metadata['value']
                 LOGGER.debug('Resource %s cccl-whitelist-updates: %s',
-                             name, self._whitelist_updates)
+                             name, self._whitelist_encoded_updates)
+                update_idx = idx
+        if update_idx:
+            del metadata_list[update_idx]
+        if self._whitelist:
+            LOGGER.info("KJR: Retrieved metadata whitelist encoded updates for %s: %s", self.name, self._whitelist_encoded_updates)
+            LOGGER.info("KJR: Retrieved data for %s: %s", self.name, self._data)
