@@ -359,7 +359,7 @@ LTM_RESOURCE_TEST_DATA = [
             {
                 'changedBigipProperties': {'c': [3, 4, 2]},
                 'requestedCcclProperties': {'c': [3, 4]},
-                'updateRequired': True,
+                'updateRequired': False,
                 'mergedBigipProperties': {'c': [3, 4, 2]}
             },
             {
@@ -380,6 +380,29 @@ LTM_RESOURCE_TEST_DATA = [
                 'mergedBigipProperties': {'c': [2]}
             }
         ]
+    },
+    {
+        'name': 'Bigip dynamic large changes to list property',
+        'initialBigipProperties': {'c': [2, 4, 6, 8]},
+        'ltmUpdates': [
+            {
+                'requestedCcclProperties': {'c': [1, 3, 5, 7]},
+                'updateRequired': True,
+                'mergedBigipProperties': {'c': [1, 3, 5, 7, 2, 4, 6, 8]}
+            },
+            {
+                'changedBigipProperties': {'c': [3, 7, 4, 8]},
+                'requestedCcclProperties': {'c': [1, 3, 5]},
+                'updateRequired': True,
+                'mergedBigipProperties': {'c': [1, 3, 5, 4, 8]}
+            },
+            {
+                'changedBigipProperties': {'c': [1, 2, 3, 4, 5, 8]},
+                'requestedCcclProperties': {'c': []},
+                'updateRequired': True,
+                'mergedBigipProperties': {'c': [2, 4, 8]}
+            }
+        ],
     },
     # test top-level list properties that are dictionaries themselves
     # (note1: this takes into account specific Big-IP behavior in that
@@ -626,10 +649,11 @@ class GenericResource(Resource):
         for key, value in properties.items():
             self._data[key] = value
 
-    def scrub_data(self):
+    def scrub_data(self, include_metadata = False):
         """Remove programmatically added properties"""
         data = copy.deepcopy(self._data)
-        del data['metadata']
+        if include_metadata:
+            del data['metadata']
         del data['name']
         del data['partition']
         return data
@@ -684,5 +708,9 @@ def test_merge_cccl_resource_properties():
                 if ltm_update['mergedBigipProperties'] \
                 else test['initialBigipProperties']
             assert expected_bigip_resource == \
-                   current_bigip_resource.scrub_data(), \
+                   current_bigip_resource.scrub_data(include_metadata=True), \
                    "Failed test: {}".format(test['name'])
+
+            # Prepare next pass to simulate retrieval from Big-IP
+            current_data = current_bigip_resource.scrub_data()
+            current_bigip_resource = GenericResource(current_data)

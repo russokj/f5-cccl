@@ -31,8 +31,7 @@ class IRule(Resource):
     properties = dict(
         name=None,
         partition=None,
-        apiAnonymous=None,
-        metadata=list()
+        apiAnonymous=None
     )
 
     def __init__(self, name, partition, **data):

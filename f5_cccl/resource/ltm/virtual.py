@@ -63,8 +63,7 @@ class VirtualServer(Resource):
                       pool=None,
                       policies=list(),
                       profiles=list(),
-                      rules=list(),
-                      metadata=list())
+                      rules=list())
 
     def __init__(self, name, partition, default_route_domain, **properties):
         """Create a Virtual server instance."""
@@ -172,6 +171,16 @@ class VirtualServer(Resource):
 
         return destination
 
+    def post_merge_adjustments(self):
+        """Re-sort order of resource properties after merge"""
+
+        for prop in ["profiles", "policies", "vlans"]:
+            if prop in self._data:
+                key = 'vlans' if prop == 'vlans' else 'name'
+                self._data[prop] = sorted(self._data[prop],
+                                          key=itemgetter(key))
+        super(VirtualServer, self).post_merge_adjustments()
+
     def __eq__(self, other):
         if not isinstance(other, VirtualServer):
             return False
@@ -235,6 +244,7 @@ class ApiVirtualServer(VirtualServer):
                                                vlansEnabled=vlansEnabled,
                                                vlansDisabled=vlansDisabled,
                                                **properties)
+        LOGGER.info("KJR: From CC Virtual {}:  {}".format(name, self._data))
 
 
 class IcrVirtualServer(VirtualServer):
@@ -252,6 +262,7 @@ class IcrVirtualServer(VirtualServer):
                                                profiles=profiles,
                                                policies=policies,
                                                **properties)
+        LOGGER.info("KJR: From BIG-IP Virtual {}:  {}".format(name, self._data))
 
     def _filter_virtual_properties(self, **properties):
         """Remove any unneeded properties from the ICR response."""
