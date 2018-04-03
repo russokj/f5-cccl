@@ -62,8 +62,10 @@ def convert_from_positional_patch(data, patch_obj):
             elif sub_path.isdigit():
                 new_path += '/'
                 ptr = ptr[int(sub_path)]
+                str_content = json.dumps(ptr)
                 new_path += \
-                    '[{}]'.format(hashlib.sha256(json.dumps(ptr)).hexdigest())
+                    '[{}]'.format(hashlib.sha256(bytes(
+                        str_content.encode('utf-8'))).hexdigest())
             else:
                 new_path += '/'
                 new_path += sub_path
@@ -114,8 +116,9 @@ def convert_to_positional_patch(data,  # pylint: disable=too-many-branches
                 uuid = sub_path[1:-1]
                 new_path += '/'
                 for content_idx, content in enumerate(ptr):
-                    content_uuid = hashlib.sha256(
-                        json.dumps(content)).hexdigest()
+                    str_content = json.dumps(content)
+                    content_uuid = hashlib.sha256(bytes(
+                        str_content.encode('utf-8'))).hexdigest()
                     if content_uuid == uuid:
                         new_path += str(content_idx)
                         ptr = ptr[content_idx]

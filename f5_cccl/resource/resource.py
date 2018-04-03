@@ -325,8 +325,9 @@ class Resource(object):
             LOGGER.error('Cannot apply updates to the non-whitelisted '
                          'object %s', self.full_path())
         elif updates:
+            b_content = bytes(updates.to_string().encode('utf-8'))
             self._whitelist_updates = base64.b64encode(
-                zlib.compress(updates.to_string()))
+                zlib.compress(b_content))
             metadata = {
                 'name': 'cccl-whitelist-updates',
                 'persist': 'true',
