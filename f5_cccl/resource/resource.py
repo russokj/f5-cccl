@@ -22,6 +22,7 @@ import copy
 import logging
 import zlib
 
+from operator import itemgetter
 import jsonpatch
 
 from f5.sdk_exception import F5SDKError
@@ -91,12 +92,10 @@ class Resource(object):
             for key, default in self.common_properties.items():
                 value = properties.get(key, default)
                 if value is not None:
+                    self._data[key] = value
                     if key == 'metadata':
                         # set resource flags
                         self._process_metadata_flags(name, value)
-                    else:
-                        # Add common properties for all resources
-                        self._data[key] = value
 
     def __eq__(self, resource):
         u"""Compare two resources for equality.
@@ -129,10 +128,12 @@ class Resource(object):
             # nothing needs to be done (cccl has not and will not make changes
             # to this resource)
             return False
+
         prev_data = copy.deepcopy(self._data)
 
         # 2. remove old CCCL updates
         pospatch.convert_to_positional_patch(self._data, prev_updates)
+
         try:
             # This actually backs out the previous updates
             # to get back to the original F5 resource state.
@@ -145,6 +146,7 @@ class Resource(object):
         # 3. perform new merge with latest CCCL specific config
         original_resource = copy.deepcopy(self)
         self._data = merge(self._data, desired_data)
+        self.post_merge_adjustments()
 
         # 4. compute the new updates so we can back out next go-around
         cur_updates = jsonpatch.make_patch(self._data, original_resource.data)
@@ -152,11 +154,22 @@ class Resource(object):
         # 5. remove move / adjust indexes per resource specific
         pospatch.convert_from_positional_patch(self._data, cur_updates)
 
+        changed = self._data != prev_data
+
         # 6. update metadata with new CCCL updates
         self._save_whitelist_updates(cur_updates)
 
         # 7. determine if there was a needed change
-        return self._data != prev_data
+        return changed
+
+    def post_merge_adjustments(self):
+        """Make any resource adjustment after merge
+
+           Inherited classes can override this to perform custom adjustments.
+        """
+        # Big-IP returns this metadata list in sorted order (by name)
+        self._data['metadata'] = sorted(self._data['metadata'],
+                                        key=itemgetter('name'))
 
     def create(self, bigip):
         u"""Create resource on a BIG-IP system.
@@ -314,14 +327,12 @@ class Resource(object):
         elif updates:
             self._whitelist_updates = base64.b64encode(
                 zlib.compress(updates.to_string()))
-            update_metadata = {
-                'metadata': [{
-                    'name': 'cccl-whitelist-updates',
-                    'persist': 'true',
-                    'value': self._whitelist_updates
-                }]
+            metadata = {
+                'name': 'cccl-whitelist-updates',
+                'persist': 'true',
+                'value': self._whitelist_updates
             }
-            self._data = merge(self._data, update_metadata)
+            self._data['metadata'].append(metadata)
 
     def _retrieve_whitelist_updates(self):
         u"""Retrieves the updates and ret to this whitelisted object"""
@@ -373,7 +384,8 @@ class Resource(object):
 
     def _process_metadata_flags(self, name, metadata_list):
         # look for supported flags
-        for metadata in metadata_list:
+        metadata_update_idx = None
+        for idx, metadata in enumerate(metadata_list):
             if metadata['name'] == 'cccl-whitelist':
                 self._whitelist = metadata['value'] in [
                     'true', 'True', 'TRUE', '1', 1]
@@ -383,3 +395,7 @@ class Resource(object):
                 self._whitelist_updates = metadata['value']
                 LOGGER.debug('Resource %s cccl-whitelist-updates: %s',
                              name, self._whitelist_updates)
+                metadata_update_idx = idx
+
+        if metadata_update_idx is not None:
+            del metadata_list[metadata_update_idx]

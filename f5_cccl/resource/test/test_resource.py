@@ -278,7 +278,8 @@ def test_unsupported_metedata_property():
 
     res = Resource(**data)
 
-    assert len(res.data) == 2
+    # unsupported metadata is ignored
+    assert len(res.data) == 3
     assert res.whitelist is False
 
 
@@ -289,7 +290,7 @@ def test_whitelist_true_metedata_property():
 
     res = Resource(**data)
 
-    assert len(res.data) == 2
+    assert len(res.data) == 3
     assert res.whitelist is True
 
 
@@ -300,7 +301,7 @@ def test_whitelist_false_metedata_property():
 
     res = Resource(**data)
 
-    assert len(res.data) == 2
+    assert len(res.data) == 3
     assert res.whitelist is False
 
 

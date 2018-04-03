@@ -35,8 +35,7 @@ class Pool(Resource):
                       loadBalancingMode="round-robin",
                       description=None,
                       monitor="default",
-                      membersReference={},
-                      metadata=list())
+                      membersReference={})
 
     def __init__(self, name, partition, members=None, **properties):
         u"""Create a Pool instance from CCCL poolType."""
