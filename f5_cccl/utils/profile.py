@@ -271,31 +271,3 @@ def _key_exists(mgmt, partition, key_name):
         if key.name == name_to_find:
             return True
     return False
-
-
-def _delete_unused_ssl_profiles(mgmt, partition, config):
-    incomplete = 0
-
-    # client profiles
-    try:
-        client_profiles = mgmt.tm.ltm.profile.client_ssls.get_collection(
-            requests_params={'params': '$filter=partition+eq+%s' % partition})
-        incomplete += _delete_ssl_profiles(
-            mgmt, partition, config, client_profiles)
-    except Exception as err:  # pylint: disable=broad-except
-        LOGGER.error("Error reading client SSL profiles from BIG-IP: %s",
-                     str(err))
-        incomplete += 1
-
-    # server profiles
-    try:
-        server_profiles = mgmt.tm.ltm.profile.server_ssls.get_collection(
-            requests_params={'params': '$filter=partition+eq+%s' % partition})
-        incomplete += _delete_ssl_profiles(
-            mgmt, partition, config, server_profiles)
-    except Exception as err:  # pylint: disable=broad-except
-        LOGGER.error("Error reading server SSL profiles from BIG-IP: %s",
-                     str(err))
-        incomplete += 1
-
-    return incomplete
