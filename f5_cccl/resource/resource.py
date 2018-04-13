@@ -400,3 +400,6 @@ class Resource(object):
 
         if metadata_update_idx is not None:
             del metadata_list[metadata_update_idx]
+        LOGGER.info("KJR: PROCESSED METADATA: _whitelist={}".format(self._whitelist))
+        LOGGER.info("KJR: PROCESSED METADATA: _whitelist_updates={}".format(self._whitelist_updates))
+        LOGGER.info("KJR: PROCESSED METADATA: metadata={}".format(metadata_list))

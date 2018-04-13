@@ -68,6 +68,10 @@ class ServiceConfigDeployer(object):
         existing_set = set(existing)
         unmanaged_set = set(unmanaged)
         managed_set = set(managed)
+        LOGGER.info("KJR: DESIRED SERVICES: {}".format(desired_set))
+        LOGGER.info("KJR: EXISTING SERVICES: {}".format(existing_set))
+        LOGGER.info("KJR: MANAGED SERVICES: {}".format(managed_set))
+        LOGGER.info("KJR: UNMANAGED SERVICES: {}".format(unmanaged_set))
 
         # Create any managed resource that doesn't currently exist
         create_list = [
