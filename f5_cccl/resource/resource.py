@@ -390,12 +390,12 @@ class Resource(object):
             if metadata['name'] == 'cccl-whitelist':
                 self._whitelist = metadata['value'] in [
                     'true', 'True', 'TRUE', '1', 1]
-                LOGGER.debug('Resource %s cccl-whitelist: %s',
-                             name, self._whitelist)
+                LOGGER.info('Resource %s cccl-whitelist: %s',
+                            name, self._whitelist)
             if metadata['name'] == 'cccl-whitelist-updates':
                 self._whitelist_updates = metadata['value']
-                LOGGER.debug('Resource %s cccl-whitelist-updates: %s',
-                             name, self._whitelist_updates)
+                LOGGER.info('Resource %s cccl-whitelist-updates: %s',
+                            name, self._whitelist_updates)
                 metadata_update_idx = idx
 
         if metadata_update_idx is not None:

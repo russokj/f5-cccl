@@ -113,19 +113,19 @@ def merge(dst, src):
              does not generically support all type variations)
     """
 
-    LOGGER.debug("Merging source: %s", src)
-    LOGGER.debug("Merging destination: %s", dst)
+    LOGGER.info("Merging source: %s", src)
+    LOGGER.info("Merging destination: %s", dst)
     # pylint: disable=C0123
     if type(dst) != type(src):
         # can't merge differing types, src wins everytime
         # (maybe this should be an error)
         dst = copy.deepcopy(src)
     elif isinstance(dst, dict):
-        return _merge_dict(dst, src)
+        dst = _merge_dict(dst, src)
     elif isinstance(dst, list):
-        return _merge_list(dst, src)
+        dst = _merge_list(dst, src)
     else:
         # scalar
         dst = src
-    LOGGER.debug("Merged result: %s", dst)
+    LOGGER.info("Merged result: %s", dst)
     return dst

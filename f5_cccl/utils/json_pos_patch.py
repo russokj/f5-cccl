@@ -42,11 +42,11 @@ def convert_from_positional_patch(data, patch_obj):
               (seems to be the case for Big-IP objects)
     """
 
-    LOGGER.debug("convert_from_positional_patch data: %s", data)
+    LOGGER.info("convert_from_positional_patch data: %s", data)
     if patch_obj is None:
         return
     patch = patch_obj.patch
-    LOGGER.debug("convert_from_positional_patch indexed patch: %s", patch)
+    LOGGER.info("convert_from_positional_patch indexed patch: %s", patch)
 
     for entry in patch:
         ptr = data
@@ -75,7 +75,7 @@ def convert_from_positional_patch(data, patch_obj):
                     # done with substitutions, so just finish up remaining path
                     ptr = None
         entry['path'] = new_path
-    LOGGER.debug("convert_from_positional_patch hashed patch: %s",
+    LOGGER.info("convert_from_positional_patch hashed patch: %s",
                  patch_obj.patch)
 
 
@@ -92,11 +92,11 @@ def convert_to_positional_patch(data,  # pylint: disable=too-many-branches
              doesn't seem possible with Big-IP gui.
     """
 
-    LOGGER.debug("convert_to_positional_patch data: %s", data)
+    LOGGER.info("convert_to_positional_patch data: %s", data)
     if patch_obj is None:
         return
     patch = patch_obj.patch
-    LOGGER.debug("convert_to_positional_patch hashed patch: %s", patch)
+    LOGGER.info("convert_to_positional_patch hashed patch: %s", patch)
 
     entry_cnt = len(patch)
     entry_idx = 0
@@ -145,5 +145,5 @@ def convert_to_positional_patch(data,  # pylint: disable=too-many-branches
         else:
             del patch[entry_idx]
             entry_cnt -= 1
-    LOGGER.debug("convert_to_positional_patch indexed patch: %s",
+    LOGGER.info("convert_to_positional_patch indexed patch: %s",
                  patch_obj.patch)
