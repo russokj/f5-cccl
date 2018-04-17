@@ -386,8 +386,10 @@ class Resource(object):
     def _process_metadata_flags(self, name, metadata_list):
         # look for supported flags
         metadata_update_idx = None
+        metadata_whitelist_flag = False
         for idx, metadata in enumerate(metadata_list):
             if metadata['name'] == 'cccl-whitelist':
+                metadata_whitelist_flag = True
                 self._whitelist = metadata['value'] in [
                     'true', 'True', 'TRUE', '1', 1]
                 LOGGER.debug('Resource %s cccl-whitelist: %s',
@@ -398,5 +400,15 @@ class Resource(object):
                              name, self._whitelist_updates)
                 metadata_update_idx = idx
 
+        # We don't want the cccl-whitelist-updates list to be part of the data.
+        # Otherwise, it will be used to determine if updates are needed and
+        # added to the patch (it IS the patch).
         if metadata_update_idx is not None:
             del metadata_list[metadata_update_idx]
+
+            # Special case: If the user removes the ccc-whitelist flag while
+            # cccl-whitelist-updates are set, we need to remove it too.  This
+            # can be done by forcing an update (the desired config does not
+            # have a ccc-whitelist flag).
+            if metadata_whitelist_flag is False:
+                metadata['cccl-whitelist'] = 0
